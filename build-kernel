@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+#
+# usage: . build-kernel clang/gcc
+
+TC="${HOME}/prebuilts"
+CS="r353983"
+DC="land_defconfig"
+
+function clean() {
+    make clean mrproper distclean
+    make O=out clean mrproper distclean
+}
+
+function clang() {
+    clean
+    export KBUILD_COMPILER_STRING=$("${TC}"/clang/clang-"${CS}"/bin/clang --version | head -n 1 | cut -d \( -f 1,2 | sed 's/[[:space:]]*$//')
+    make O=out ARCH=arm64 "${DC}"
+    PATH="${TC}/clang/clang-${CS}/bin:${TC}/gcc/bin:${PATH}" \
+    make -j$(nproc --all) O=out \
+                          ARCH=arm64 \
+                          CC=clang \
+                          CLANG_TRIPLE=aarch64-linux-gnu- \
+                          CROSS_COMPILE=aarch64-linux-android-
+}
+
+function gcc() {
+    clean
+    unset KBUILD_COMPILER_STRING
+    make O=out ARCH=arm64 "${DC}"
+    PATH="${TC}/gcc/bin:${PATH}" \
+    make -j$(nproc --all) O=out \
+                          ARCH=arm64 \
+                          CROSS_COMPILE=aarch64-linux-android-
+}
+
+"${@}" 2>&1 | tee build.log
